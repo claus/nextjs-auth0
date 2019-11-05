@@ -29,6 +29,7 @@ export interface AuthorizationParameters {
   login_hint?: string;
   max_age?: string;
   prompt?: string;
+  redirect_uri?: string;
   scope?: string;
   state?: string;
   ui_locales?: string;
@@ -45,15 +46,21 @@ export default function loginHandler(settings: IAuth0Settings, clientProvider: I
       throw new Error('Response is not available');
     }
 
-    const { state = base64url(randomBytes(48)), ...authParams } = (options && options.authParams) || {};
+    const {
+        redirect_uri = settings.redirectUri,
+        scope = settings.scope,
+        audience = settings.audience,
+        state = base64url(randomBytes(48)),
+        ...authParams
+    } = (options && options.authParams) || {};
 
     // Create the authorization url.
     const client = await clientProvider();
     const authorizationUrl = client.authorizationUrl({
-      redirect_uri: settings.redirectUri,
-      scope: settings.scope,
+      redirect_uri,
+      scope,
       response_type: 'code',
-      audience: settings.audience,
+      audience,
       state,
       auth0Client: telemetry(),
       ...authParams

@@ -6,8 +6,13 @@ import { parseCookies } from '../utils/cookies';
 import { ISessionStore } from '../session/store';
 import { IOidcClientFactory } from '../utils/oidc-client';
 
+export interface AuthorizationParameters {
+  redirect_uri?: string;
+}
+
 export type CallbackOptions = {
   redirectTo?: string;
+  authParams?: AuthorizationParameters;
 };
 
 export default function callbackHandler(
@@ -24,6 +29,9 @@ export default function callbackHandler(
       throw new Error('Request is not available');
     }
 
+    const { redirectTo = '/' } = options || {};
+    const { redirect_uri = settings.redirectUri } = (options && options.authParams) || {};
+
     // Parse the cookies.
     const cookies = parseCookies(req);
 
@@ -36,7 +44,7 @@ export default function callbackHandler(
     // Execute the code exchange
     const client = await clientProvider();
     const params = client.callbackParams(req);
-    const tokenSet = await client.callback(settings.redirectUri, params, {
+    const tokenSet = await client.callback(redirect_uri, params, {
       state
     });
 
@@ -73,7 +81,6 @@ export default function callbackHandler(
     await sessionStore.save(req, res, session);
 
     // Redirect to the homepage.
-    const redirectTo = (options && options.redirectTo) || '/';
     res.writeHead(302, {
       Location: redirectTo
     });

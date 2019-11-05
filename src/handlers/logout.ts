@@ -4,19 +4,29 @@ import IAuth0Settings from '../settings';
 import { setCookies } from '../utils/cookies';
 import CookieSessionStoreSettings from '../session/cookie-store/settings';
 
-function createLogoutUrl(settings: IAuth0Settings): string {
+export interface AuthorizationParameters {
+  redirect_uri?: string;
+}
+
+export type LogoutOptions = {
+  authParams?: AuthorizationParameters;
+};
+
+function createLogoutUrl(settings: IAuth0Settings, postLogoutRedirectUri: string): string {
   return (
     `https://${settings.domain}/v2/logout?`
     + `client_id=${settings.clientId}`
-    + `&returnTo=${encodeURIComponent(settings.postLogoutRedirectUri)}`
+    + `&returnTo=${encodeURIComponent(postLogoutRedirectUri)}`
   );
 }
 
 export default function logoutHandler(settings: IAuth0Settings, sessionSettings: CookieSessionStoreSettings) {
-  return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+  return async (req: IncomingMessage, res: ServerResponse, options: LogoutOptions = {}): Promise<void> => {
     if (!res) {
       throw new Error('Response is not available');
     }
+
+    const { redirect_uri = settings.postLogoutRedirectUri } = (options && options.authParams) || {};
 
     // Remove the cookies
     setCookies(req, res, [
@@ -35,7 +45,7 @@ export default function logoutHandler(settings: IAuth0Settings, sessionSettings:
 
     // Redirect to the logout endpoint.
     res.writeHead(302, {
-      Location: createLogoutUrl(settings)
+      Location: createLogoutUrl(settings, redirect_uri)
     });
     res.end();
   };
